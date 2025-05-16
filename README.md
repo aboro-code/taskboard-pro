@@ -134,45 +134,6 @@ Automations are stored in the `Automation` collection.
 
 ---
 
-## Demo Video Script (4-5 min)
-
-1. **Intro**
-   - "Hi, this is TaskBoard Pro, a modern project collaboration app with workflow automation."
-
-2. **Login**
-   - Show Google login and email/password signup.
-   - Point out user profile at the top right.
-
-3. **Project Management**
-   - Create a new project (title, description).
-   - Show inviting a user by email.
-   - Show that only members can see the project.
-
-4. **Task Management**
-   - Create a task (title, description, due date, assignee).
-   - Show Kanban board: move task between To Do, In Progress, Done.
-   - Assign a task to a teammate.
-   - Show custom statuses if available.
-
-5. **Workflow Automation**
-   - As project owner, add an automation: "When moved to Done, assign badge".
-   - Move a task to Done and show badge assignment.
-   - Add automation: "When assigned to user X, move to In Progress".
-   - Assign a task and show it moves automatically.
-   - Trigger due date notification (manually or explain cron).
-
-6. **Comments & Badges**
-   - Add a comment to a task.
-   - Show user badges earned for completed tasks.
-
-7. **Notifications**
-   - Show notification for overdue task or badge assignment.
-
-8. **Wrap Up**
-   - "That's TaskBoard Pro: projects, tasks, automations, and a clean UI. Thanks for watching!"
-
----
-
 ## Security & Best Practices
 
 - All sensitive files (e.g., `.env`, `serviceAccountKey.json`) are in `.gitignore`.
