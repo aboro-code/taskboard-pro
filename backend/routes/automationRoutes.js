@@ -4,17 +4,14 @@ const Automation = require('../models/Automation');
 const Project = require('../models/Project');
 const User = require('../models/User');
 const Task = require('../models/Task');
-const Notification = require('../models/Notification'); // Make sure this model exists
+const Notification = require('../models/Notification'); 
 const authenticate = require('../middleware/auth');
 
-// Notification model (simple in-memory for demo; for production, use a real model)
 let notifications = [];
 
-// Helper: Trigger automations for a project when a task is updated
 async function triggerAutomations(task, prevStatus, prevAssignee) {
   const automations = await Automation.find({ project: task.project });
   for (const auto of automations) {
-    // 1. When a task is moved to 'Done', assign badge (already implemented)
     if (
       auto.trigger === 'status_change' &&
       prevStatus !== 'Done' &&
@@ -27,14 +24,22 @@ async function triggerAutomations(task, prevStatus, prevAssignee) {
           task.assignee,
           { $addToSet: { badges: auto.action.badge || 'Completed Task' } }
         );
-        // Send notification to the user
         await Notification.create({
           user: task.assignee,
           message: `Congratulations! You earned the badge "${auto.action.badge || 'Completed Task'}" for completing "${task.title}".`,
         });
       }
     }
-    // 2. When a task is assigned to user X, move to 'In Progress'
+  }
+  if (prevStatus !== 'Done' && task.status === 'Done') {
+    if (task.assignee) {
+      await Notification.create({
+        user: task.assignee,
+        message: `Task "${task.title}" is marked as Done.`,
+      });
+    }
+  }
+  for (const auto of automations) {
     if (
       auto.trigger === 'assignment' &&
       prevAssignee !== task.assignee?.toString() &&
@@ -50,11 +55,9 @@ async function triggerAutomations(task, prevStatus, prevAssignee) {
         await task.save();
       }
     }
-    // Add more automation types here as needed
   }
 }
 
-// Get all automations for a project (owner only)
 router.get('/project/:projectId', authenticate, async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.projectId, owner: req.user._id });
@@ -66,7 +69,6 @@ router.get('/project/:projectId', authenticate, async (req, res) => {
   }
 });
 
-// Create an automation for a project (owner only)
 router.post('/project/:projectId', authenticate, async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.projectId, owner: req.user._id });
@@ -85,7 +87,6 @@ router.post('/project/:projectId', authenticate, async (req, res) => {
   }
 });
 
-// Update an automation (owner only)
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const automation = await Automation.findById(req.params.id).populate('project');
@@ -100,7 +101,6 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Delete an automation (owner only)
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     const automation = await Automation.findById(req.params.id).populate('project');
@@ -114,7 +114,6 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Update a task (must be project member)
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id).populate('project');
@@ -125,7 +124,6 @@ router.put('/:id', authenticate, async (req, res) => {
     const prevAssignee = task.assignee ? task.assignee.toString() : null;
     Object.assign(task, req.body);
     await task.save();
-    // Trigger automations after update
     await triggerAutomations(task, prevStatus, prevAssignee);
     res.json(task);
   } catch (err) {
@@ -133,7 +131,6 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-// GET /api/automations/notifications - get notifications for current user
 router.get('/notifications', authenticate, async (req, res) => {
   try {
     const notes = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 });
@@ -143,7 +140,6 @@ router.get('/notifications', authenticate, async (req, res) => {
   }
 });
 
-// POST /api/automations/check-due-dates - send notifications for overdue tasks
 router.post('/check-due-dates', async (req, res) => {
   const now = new Date();
   const overdueTasks = await Task.find({ dueDate: { $lt: now }, status: { $ne: 'Done' } });
@@ -158,9 +154,7 @@ router.post('/check-due-dates', async (req, res) => {
   res.json({ message: 'Notifications sent for overdue tasks.' });
 });
 
-// --- Comments on tasks ---
 
-// POST /api/automations/task/:taskId/comment
 router.post('/task/:taskId/comment', authenticate, async (req, res) => {
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: 'Comment text required' });
@@ -176,7 +170,6 @@ router.post('/task/:taskId/comment', authenticate, async (req, res) => {
   res.json({ message: 'Comment added' });
 });
 
-// GET /api/automations/task/:taskId/comments
 router.get('/task/:taskId/comments', authenticate, async (req, res) => {
   const task = await Task.findById(req.params.taskId).populate('comments.user', 'name email');
   if (!task) return res.status(404).json({ error: 'Task not found' });

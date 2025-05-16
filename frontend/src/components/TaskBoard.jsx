@@ -41,31 +41,36 @@ export default function TaskBoard({
                       </div>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {statuses
-                        .filter((s) => s !== status)
-                        .map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => onMoveTask(task, s)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-xs transition"
-                          >
-                            Move to {s}
-                          </button>
-                        ))}
+                      {/* Hide move/delete buttons if task is Done */}
+                      {task.status !== 'Done' && (
+                        <>
+                          {statuses
+                            .filter((s) => s !== status)
+                            .map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => onMoveTask(task, s)}
+                                className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-xs transition"
+                              >
+                                Move to {s}
+                              </button>
+                            ))}
+                          {onDeleteTask && (
+                            <button
+                              className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs transition"
+                              onClick={() => onDeleteTask(task._id)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </>
+                      )}
                       <button
                         className="px-3 py-1 bg-gray-200 rounded-lg text-xs hover:bg-gray-300 transition"
                         onClick={() => setShowCommentsFor(task._id)}
                       >
                         Comments
                       </button>
-                      {onDeleteTask && (
-                        <button
-                          className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs transition"
-                          onClick={() => onDeleteTask(task._id)}
-                        >
-                          Delete
-                        </button>
-                      )}
                     </div>
                     {showCommentsFor === task._id && (
                       <TaskCommentsModal

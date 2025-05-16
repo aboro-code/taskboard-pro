@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { fetchWithAuth } from '../api';
 import TaskBoard from '../components/TaskBoard';
 import TaskForm from '../components/TaskForm';
@@ -12,7 +12,10 @@ export default function ProjectBoardPage({ user, project }) {
   const [showAutoForm, setShowAutoForm] = useState(false);
   const [autoBadge, setAutoBadge] = useState('');
   const [error, setError] = useState('');
+  const [, setToastTick] = useState(0);
   const navigate = useNavigate();
+
+  const shownNotificationIds = useRef(new Set());
 
   useEffect(() => {
     if (!project || !project._id) {
@@ -40,6 +43,34 @@ export default function ProjectBoardPage({ user, project }) {
       .then(setAutomations);
   }, [project, user]);
 
+  useEffect(() => {
+    if (!user || !user.jwt) return;
+    let lastShownIds = shownNotificationIds.current;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/automations/notifications', {
+          headers: { Authorization: `Bearer ${user.jwt}` }
+        });
+        const notes = await res.json();
+        if (Array.isArray(notes)) {
+          notes
+            .filter(n => !lastShownIds.has(n._id))
+            .forEach(n => {
+              console.log("ALERT:", n.message);
+              alert(n.message);
+              lastShownIds.add(n._id);
+            });
+          if (notes.length > 0) setToastTick(t => t + 1);
+        }
+      } catch (err) {
+        console.error("Notification fetch error", err);
+      }
+    };
+    poll(); 
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   async function handleCreateTask(taskData) {
     await fetchWithAuth(`/api/tasks/project/${project._id}`, user.jwt, {
       method: 'POST',
@@ -50,6 +81,10 @@ export default function ProjectBoardPage({ user, project }) {
   }
 
   async function handleMoveTask(task, newStatus) {
+    if (task.status === 'Done') {
+      alert('Cannot move a task out of Done.');
+      return;
+    }
     await fetchWithAuth(`/api/tasks/${task._id}`, user.jwt, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -59,6 +94,11 @@ export default function ProjectBoardPage({ user, project }) {
   }
 
   async function handleDeleteTask(taskId) {
+    const task = tasks.find(t => t._id === taskId);
+    if (task && task.status === 'Done') {
+      alert('Cannot delete a task that is Done.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this task?')) return;
     await fetchWithAuth(`/api/tasks/${taskId}`, user.jwt, { method: 'DELETE' });
     fetchWithAuth(`/api/tasks/project/${project._id}`, user.jwt).then(setTasks);

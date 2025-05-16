@@ -6,16 +6,13 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const authenticate = require('../middleware/auth');
 
-// POST /api/auth/google
 router.post('/google', async (req, res) => {
   const { idToken } = req.body;
   if (!idToken) return res.status(400).json({ error: 'No ID token provided' });
 
   try {
-    // Verify token with Firebase Admin
     const decoded = await admin.auth().verifyIdToken(idToken);
 
-    // Find or create user in MongoDB
     let user = await User.findOne({ googleId: decoded.uid });
     if (!user) {
       user = await User.create({
@@ -26,7 +23,6 @@ router.post('/google', async (req, res) => {
       });
     }
 
-    // Generate JWT token (expires in 7 days)
     const token = jwt.sign(
       {
         _id: user._id,
@@ -38,7 +34,6 @@ router.post('/google', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Respond with token and user info
     res.json({
       token,
       user: {
@@ -54,9 +49,6 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// POST /api/auth/signup
-// Registers a new user with email, password, and name.
-// Returns: { token, user }
 router.post('/signup', async (req, res) => {
   const { email, password, name } = req.body;
   if (!email || !password || !name) {
@@ -100,9 +92,6 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// POST /api/auth/signin
-// Authenticates a user with email and password.
-// Returns: { token, user }
 router.post('/signin', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
@@ -142,7 +131,6 @@ router.post('/signin', async (req, res) => {
   }
 });
 
-// GET /api/auth/me
 router.get('/me', authenticate, async (req, res) => {
   try {
     res.json({

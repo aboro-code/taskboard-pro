@@ -4,7 +4,6 @@ const Task = require('../models/Task');
 const Project = require('../models/Project');
 const authenticate = require('../middleware/auth');
 
-// Get all tasks for a project (user must be a member)
 router.get('/project/:projectId', authenticate, async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.projectId, members: req.user._id });
@@ -16,7 +15,6 @@ router.get('/project/:projectId', authenticate, async (req, res) => {
   }
 });
 
-// Create a task in a project
 router.post('/project/:projectId', authenticate, async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.projectId, members: req.user._id });
@@ -37,12 +35,14 @@ router.post('/project/:projectId', authenticate, async (req, res) => {
   }
 });
 
-// Update a task (must be project member)
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id).populate('project');
     if (!task || !task.project.members.includes(req.user._id)) {
       return res.status(403).json({ error: 'Access denied' });
+    }
+    if (task.status === 'Done' && req.body.status && req.body.status !== 'Done') {
+      return res.status(400).json({ error: 'Cannot move a task out of Done.' });
     }
     Object.assign(task, req.body);
     await task.save();
@@ -52,12 +52,14 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Delete a task (must be project member)
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id).populate('project');
     if (!task || !task.project.members.includes(req.user._id)) {
       return res.status(403).json({ error: 'Access denied' });
+    }
+    if (task.status === 'Done') {
+      return res.status(400).json({ error: 'Cannot delete a task that is Done.' });
     }
     await task.deleteOne();
     res.json({ message: 'Task deleted' });
