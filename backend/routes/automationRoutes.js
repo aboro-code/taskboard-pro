@@ -4,13 +4,13 @@ const Automation = require('../models/Automation');
 const Project = require('../models/Project');
 const User = require('../models/User');
 const Task = require('../models/Task');
-const Notification = require('../models/Notification'); 
 const authenticate = require('../middleware/auth');
 
-let notifications = [];
-
+// Helper: Trigger automations for a project when a task is updated
 async function triggerAutomations(task, prevStatus, prevAssignee) {
   const automations = await Automation.find({ project: task.project });
+
+  // 1. When a task is moved to 'Done', assign badge
   for (const auto of automations) {
     if (
       auto.trigger === 'status_change' &&
@@ -24,21 +24,11 @@ async function triggerAutomations(task, prevStatus, prevAssignee) {
           task.assignee,
           { $addToSet: { badges: auto.action.badge || 'Completed Task' } }
         );
-        await Notification.create({
-          user: task.assignee,
-          message: `Congratulations! You earned the badge "${auto.action.badge || 'Completed Task'}" for completing "${task.title}".`,
-        });
       }
     }
   }
-  if (prevStatus !== 'Done' && task.status === 'Done') {
-    if (task.assignee) {
-      await Notification.create({
-        user: task.assignee,
-        message: `Task "${task.title}" is marked as Done.`,
-      });
-    }
-  }
+
+  // 2. When a task is assigned to user X, move to 'In Progress'
   for (const auto of automations) {
     if (
       auto.trigger === 'assignment' &&
@@ -131,29 +121,11 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.get('/notifications', authenticate, async (req, res) => {
-  try {
-    const notes = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 });
-    res.json(notes);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch notifications' });
-  }
-});
+// Remove all notification endpoints and logic
 
 router.post('/check-due-dates', async (req, res) => {
-  const now = new Date();
-  const overdueTasks = await Task.find({ dueDate: { $lt: now }, status: { $ne: 'Done' } });
-  for (const task of overdueTasks) {
-    if (task.assignee) {
-      await Notification.create({
-        user: task.assignee,
-        message: `Task "${task.title}" is overdue!`,
-      });
-    }
-  }
-  res.json({ message: 'Notifications sent for overdue tasks.' });
+  res.json({ message: 'Notifications disabled.' });
 });
-
 
 router.post('/task/:taskId/comment', authenticate, async (req, res) => {
   const { text } = req.body;

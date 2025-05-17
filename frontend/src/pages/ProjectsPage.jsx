@@ -126,7 +126,6 @@ export default function ProjectsPage({ user, onSelectProject }) {
         projects={projects}
         onSelect={onSelectProject}
         onInvite={project => setSelectedForInvite(project)}
-        onDelete={handleDeleteProject}
         currentUserId={user._id}
       />
       {selectedForInvite && (

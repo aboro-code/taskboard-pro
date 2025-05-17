@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 export default function TaskBoard({
   tasks,
@@ -6,8 +6,11 @@ export default function TaskBoard({
   onMoveTask,
   members = [],
   onDeleteTask,
+  onAssignUser,
 }) {
   const [showCommentsFor, setShowCommentsFor] = useState(null);
+  const [assigningTaskId, setAssigningTaskId] = useState(null);
+  const [selectedAssignee, setSelectedAssignee] = useState("");
 
   return (
     <div className="flex gap-6">
@@ -32,16 +35,84 @@ export default function TaskBoard({
                     <div className="text-gray-600 text-sm">
                       {task.description}
                     </div>
-                    {task.assignee && (
-                      <div className="text-xs text-gray-500">
-                        Assigned to:{" "}
-                        {task.assignee.name ||
-                          task.assignee.email ||
-                          task.assignee}
+                    <div className="flex flex-wrap gap-2 mt-1 justify-center">
+                      {task.assignee ? (
+                        <span className="text-xs text-gray-500 bg-blue-100 px-2 py-1 rounded">
+                          Assigned to:{" "}
+                          {task.assignee.name ||
+                            task.assignee.email ||
+                            task.assignee}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                          Unassigned
+                        </span>
+                      )}
+                      {task.status === "Done" && task.updatedAt && (
+                        <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
+                          Done at: {new Date(task.updatedAt).toLocaleString()}
+                        </span>
+                      )}
+                      {task.status !== "Done" && task.dueDate && (
+                        <span className="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">
+                          Due: {new Date(task.dueDate).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {task.assignee == null && onAssignUser && (
+                      <div className="mt-2">
+                        {assigningTaskId === task._id ? (
+                          <form
+                            className="inline"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              if (selectedAssignee) {
+                                onAssignUser(task, selectedAssignee);
+                                setAssigningTaskId(null);
+                                setSelectedAssignee("");
+                              }
+                            }}
+                          >
+                            <select
+                              value={selectedAssignee}
+                              onChange={(e) =>
+                                setSelectedAssignee(e.target.value)
+                              }
+                              className="border border-blue-300 rounded px-2 py-1 text-xs ml-1"
+                              required
+                            >
+                              <option value="">Select user</option>
+                              {members.map((m) => (
+                                <option key={m._id} value={m._id}>
+                                  {m.name || m.email}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="submit"
+                              className="ml-1 px-2 py-1 bg-green-500 text-white rounded text-xs"
+                            >
+                              Assign
+                            </button>
+                            <button
+                              type="button"
+                              className="ml-1 px-2 py-1 bg-gray-300 rounded text-xs"
+                              onClick={() => setAssigningTaskId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        ) : (
+                          <button
+                            className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-xs"
+                            onClick={() => setAssigningTaskId(task._id)}
+                          >
+                            Assign
+                          </button>
+                        )}
                       </div>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {/* Hide move/delete buttons if task is Done */}
                       {task.status !== 'Done' && (
                         <>
                           {statuses

@@ -9,6 +9,7 @@ export default defineConfig({
       '/api': 'http://localhost:5000'
     }
   }
+  // No need to hardcode API URL here; use .env and import.meta.env in code
 })
 
 

@@ -3,7 +3,9 @@ import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectBoardPage from "./pages/ProjectBoardPage";
+import ProfilePage from "./pages/ProfilePage";
 import { fetchWithAuth } from "./api";
+import Navbar from "./components/Navbar";
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -82,50 +84,44 @@ export default function App() {
   if (!user) return <LoginPage onLogin={handleLogin} />;
 
   return (
-    <div className="relative p-8 bg-slate-50 min-h-screen">
-      <div className="absolute top-6 right-44">
-        <span className="text-xl font-bold text-blue-900">{user.name}</span>
-      </div>
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="absolute top-6 right-6 px-6 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-md font-semibold shadow-md hover:from-red-600 hover:to-pink-600 transition"
-      >
-        Logout
-      </button>
-      <h2 className="text-4xl font-extrabold mb-8 text-blue-900 select-none">
-        TaskBoard Pro
-      </h2>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <ProjectsPage
-              user={user}
-              onSelectProject={(project) => {
-                handleSetSelectedProject(project);
-                navigate("/project");
-              }}
-            />
-          }
-        />
-        <Route
-          path="/project"
-          element={
-            fullProject && fullProject._id ? (
-              projectLoading ? (
-                <div className="text-blue-700 text-lg">Loading project...</div>
+    <div className="min-h-screen bg-slate-50">
+      <Navbar user={user} onLogout={handleLogout} />
+      <div className="max-w-4xl mx-auto mt-10 p-8 bg-gradient-to-br from-blue-50 to-purple-100 rounded-xl shadow-lg text-center border border-blue-200 relative">
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <ProjectsPage
+                user={user}
+                onSelectProject={(project) => {
+                  handleSetSelectedProject(project);
+                  navigate("/project");
+                }}
+              />
+            }
+          />
+          <Route
+            path="/project"
+            element={
+              fullProject && fullProject._id ? (
+                projectLoading ? (
+                  <div className="text-blue-700 text-lg">Loading project...</div>
+                ) : (
+                  <ProjectBoardPage user={user} project={fullProject} />
+                )
               ) : (
-                <ProjectBoardPage user={user} project={fullProject} />
+                <div className="text-red-600">
+                  Select a project from the home page.
+                </div>
               )
-            ) : (
-              <div className="text-red-600">
-                Select a project from the home page.
-              </div>
-            )
-          }
-        />
-      </Routes>
+            }
+          />
+          <Route
+            path="/profile"
+            element={<ProfilePage user={user} />}
+          />
+        </Routes>
+      </div>
     </div>
   );
 }

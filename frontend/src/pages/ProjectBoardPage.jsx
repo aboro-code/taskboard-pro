@@ -8,13 +8,10 @@ export default function ProjectBoardPage({ user, project }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState([]);
-  const [automations, setAutomations] = useState([]);
-  const [showAutoForm, setShowAutoForm] = useState(false);
-  const [autoBadge, setAutoBadge] = useState('');
+  const [ownerName, setOwnerName] = useState("");
   const [error, setError] = useState('');
   const [, setToastTick] = useState(0);
   const navigate = useNavigate();
-
   const shownNotificationIds = useRef(new Set());
 
   useEffect(() => {
@@ -34,13 +31,12 @@ export default function ProjectBoardPage({ user, project }) {
   useEffect(() => {
     if (!project || !project._id) return;
     fetchWithAuth(`/api/projects/${project._id}`, user.jwt)
-      .then(p => setMembers(p.members || []));
-  }, [project, user]);
-
-  useEffect(() => {
-    if (!project || !project._id) return;
-    fetchWithAuth(`/api/automations/project/${project._id}`, user.jwt)
-      .then(setAutomations);
+      .then(p => {
+        setMembers(p.members || []);
+        // Find owner name from members or fallback to owner id
+        const owner = (p.members || []).find(m => String(m._id) === String(p.owner));
+        setOwnerName(owner ? (owner.name || owner.email) : p.owner);
+      });
   }, [project, user]);
 
   useEffect(() => {
@@ -72,15 +68,29 @@ export default function ProjectBoardPage({ user, project }) {
   }, [user]);
 
   async function handleCreateTask(taskData) {
+    // If assignee is set and status is "To Do", force status to "In Progress"
+    let data = { ...taskData };
+    if (data.assignee && (data.status === "To Do" || !data.status)) {
+      data.status = "In Progress";
+    }
     await fetchWithAuth(`/api/tasks/project/${project._id}`, user.jwt, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(taskData),
+      body: JSON.stringify(data),
     });
     fetchWithAuth(`/api/tasks/project/${project._id}`, user.jwt).then(setTasks);
   }
 
   async function handleMoveTask(task, newStatus) {
+    // Prevent moving to In Progress without assignee
+    if (
+      task.status === "To Do" &&
+      newStatus === "In Progress" &&
+      (!task.assignee || !task.assignee._id)
+    ) {
+      alert("Assign a user before moving to In Progress.");
+      return;
+    }
     if (task.status === 'Done') {
       alert('Cannot move a task out of Done.');
       return;
@@ -104,34 +114,57 @@ export default function ProjectBoardPage({ user, project }) {
     fetchWithAuth(`/api/tasks/project/${project._id}`, user.jwt).then(setTasks);
   }
 
-  async function handleAddAutomation(e) {
-    e.preventDefault();
-    await fetchWithAuth(`/api/automations/project/${project._id}`, user.jwt, {
-      method: 'POST',
+  async function handleAssignUser(task, assigneeId) {
+    await fetchWithAuth(`/api/tasks/${task._id}`, user.jwt, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignee: assigneeId }),
+    });
+    fetchWithAuth(`/api/tasks/project/${project._id}`, user.jwt).then(setTasks);
+  }
+
+  async function handleDeleteProject() {
+    if (!window.confirm('Are you sure you want to delete this project? This cannot be undone.')) return;
+    await fetchWithAuth(`/api/projects/${project._id}`, user.jwt, { method: 'DELETE' });
+    navigate('/');
+  }
+
+  async function handleLeaveProject() {
+    if (!window.confirm('Are you sure you want to leave this project?')) return;
+    // Remove self from project members (handle both object and string id cases)
+    const memberIds = members.map(m => (m && m._id ? m._id : m));
+    const updatedMembers = memberIds.filter(id => String(id) !== String(user._id));
+    await fetchWithAuth(`/api/projects/${project._id}`, user.jwt, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        trigger: 'status_change',
-        condition: { to: 'Done' },
-        action: { type: 'assign_badge', badge: autoBadge || 'Completed Task' }
+        members: updatedMembers
       }),
     });
-    setShowAutoForm(false);
-    setAutoBadge('');
-    fetchWithAuth(`/api/automations/project/${project._id}`, user.jwt).then(setAutomations);
+    navigate('/');
   }
 
   if (error) return <div className="text-red-500">{error}</div>;
   if (loading) return <div className="text-gray-500">Loading tasks...</div>;
 
   return (
-    <div>
-      <button
-        className="mb-4 px-3 py-1 bg-gray-300 rounded hover:bg-gray-400"
-        onClick={() => navigate('/')}
-      >
-        ← Back to Projects
-      </button>
-      <h2 className="text-xl font-bold mb-4">{project.title} Board</h2>
+    <div className="max-w-4xl mx-auto mt-10 p-8 bg-gradient-to-br from-blue-50 to-purple-100 rounded-xl shadow-lg text-center border border-blue-200 relative">
+      <div className="text-2xl font-bold text-blue-900 mb-2">
+        Project Board : {project.title} 
+      </div>
+      <div className="text-md text-blue-700 mb-6">
+        Owner: {ownerName}
+      </div>
+      <div className="flex justify-end mb-4" style={{ marginTop: "56px", marginRight: "160px" }}>
+        {project.owner === user._id && (
+          <button
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            onClick={handleDeleteProject}
+          >
+            Delete Project
+          </button>
+        )}
+      </div>
       <TaskForm
         onCreate={handleCreateTask}
         members={members}
@@ -143,44 +176,8 @@ export default function ProjectBoardPage({ user, project }) {
         onMoveTask={handleMoveTask}
         members={members}
         onDeleteTask={project.owner === user._id ? handleDeleteTask : undefined}
+        onAssignUser={handleAssignUser}
       />
-      <div className="mt-6 text-left">
-        <h3 className="font-bold mb-2">Automations</h3>
-        <ul className="mb-2">
-          {automations.map(a => (
-            <li key={a._id} className="text-sm">
-              When task is moved to <b>Done</b>, assign badge: <b>{a.action.badge}</b>
-            </li>
-          ))}
-        </ul>
-        {project.owner === user._id && (
-          <>
-            <button
-              className="mb-2 px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
-              onClick={() => setShowAutoForm(f => !f)}
-            >
-              {showAutoForm ? 'Cancel' : 'Add Automation'}
-            </button>
-            {showAutoForm && (
-              <form onSubmit={handleAddAutomation} className="flex gap-2 items-end mt-2">
-                <input
-                  className="border rounded px-2 py-1"
-                  placeholder="Badge name"
-                  value={autoBadge}
-                  onChange={e => setAutoBadge(e.target.value)}
-                  required
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Add
-                </button>
-              </form>
-            )}
-          </>
-        )}
-      </div>
     </div>
   );
 }
