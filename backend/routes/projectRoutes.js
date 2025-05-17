@@ -3,6 +3,7 @@ const router = express.Router();
 const Project = require('../models/Project');
 const authenticate = require('../middleware/auth');
 
+// List projects that the user is a member of
 router.get('/', authenticate, async (req, res) => {
   try {
     console.log('Fetching projects for user:', req.user._id, req.user.email);
@@ -17,6 +18,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// Create a new project
 router.post('/', authenticate, async (req, res) => {
   try {
     const { title, description, statuses } = req.body;
@@ -33,6 +35,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// Get project details
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.id, members: req.user._id })
@@ -44,6 +47,7 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Update project details
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const project = await Project.findOneAndUpdate(
@@ -58,6 +62,7 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Delete project
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     const project = await Project.findOneAndDelete({ _id: req.params.id, owner: req.user._id });
@@ -68,6 +73,7 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Invite user to project
 router.post('/:id/invite', authenticate, async (req, res) => {
   try {
     const { email } = req.body;
@@ -92,3 +98,4 @@ router.post('/:id/invite', authenticate, async (req, res) => {
 });
 
 module.exports = router;
+

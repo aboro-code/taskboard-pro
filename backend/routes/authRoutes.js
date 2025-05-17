@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const authenticate = require('../middleware/auth');
 
+// Google OAuth login
 router.post('/google', async (req, res) => {
   const { idToken } = req.body;
   if (!idToken) return res.status(400).json({ error: 'No ID token provided' });
@@ -13,8 +14,10 @@ router.post('/google', async (req, res) => {
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
 
+    // Check if user exists
     let user = await User.findOne({ googleId: decoded.uid });
     if (!user) {
+      // Create new user if not exists
       user = await User.create({
         googleId: decoded.uid,
         name: decoded.name || decoded.email,
@@ -23,6 +26,7 @@ router.post('/google', async (req, res) => {
       });
     }
 
+    // Generate JWT token
     const token = jwt.sign(
       {
         _id: user._id,
@@ -30,10 +34,11 @@ router.post('/google', async (req, res) => {
         email: user.email,
         name: user.name,
       },
-      process.env.JWT_SECRET || 'changeme', 
+      process.env.JWT_SECRET || 'changeme',
       { expiresIn: '7d' }
     );
 
+    // Return JWT token and user info
     res.json({
       token,
       user: {
@@ -49,16 +54,21 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Signup with email/password
 router.post('/signup', async (req, res) => {
   const { email, password, name } = req.body;
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Name, email, and password are required' });
   }
   try {
+    // Check if email already in use
     let existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ error: 'Email already in use' });
 
+    // Hash password
     const hash = await bcrypt.hash(password, 10);
+
+    // Create new user
     const user = await User.create({
       email,
       name,
@@ -67,6 +77,7 @@ router.post('/signup', async (req, res) => {
       avatar: '',   
     });
 
+    // Generate JWT token
     const token = jwt.sign(
       {
         _id: user._id,
@@ -77,6 +88,7 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Return JWT token and user info
     res.json({
       token,
       user: {
@@ -92,6 +104,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+// Signin with email/password
 router.post('/signin', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
@@ -106,6 +119,7 @@ router.post('/signin', async (req, res) => {
     if (!match)
       return res.status(400).json({ error: 'Invalid credentials' });
 
+    // Generate JWT token
     const token = jwt.sign(
       {
         _id: user._id,
@@ -116,6 +130,7 @@ router.post('/signin', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Return JWT token and user info
     res.json({
       token,
       user: {
@@ -131,6 +146,7 @@ router.post('/signin', async (req, res) => {
   }
 });
 
+// Get user info (protected route)
 router.get('/me', authenticate, async (req, res) => {
   try {
     res.json({
@@ -146,3 +162,4 @@ router.get('/me', authenticate, async (req, res) => {
 });
 
 module.exports = router;
+

@@ -5,6 +5,7 @@ const Project = require('../models/Project');
 const User = require('../models/User');
 const authenticate = require('../middleware/auth');
 
+// Get tasks for a project
 router.get('/project/:projectId', authenticate, async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.projectId, members: req.user._id });
@@ -16,22 +17,23 @@ router.get('/project/:projectId', authenticate, async (req, res) => {
   }
 });
 
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
+// Create a new task in a project
 router.post('/project/:projectId', authenticate, async (req, res) => {
   try {
     const project = await Project.findOne({ _id: req.params.projectId, members: req.user._id });
     if (!project) return res.status(403).json({ error: 'Access denied' });
-    let { title, description, dueDate, status, assignee } = req.body;
+    const { title, description, dueDate, status, assignee } = req.body;
+
+    // If assignee is set and status is "To Do", force status to "In Progress"
+    if (assignee && (!status || status === "To Do")) {
+      status = "In Progress";
+    }
+
     const existingTask = await Task.findOne({ project: project._id, title: title.trim() });
     if (existingTask) {
       return res.status(400).json({ error: 'A task with this name already exists in this project.' });
     }
-    if (assignee && (!status || status === "To Do")) {
-      status = "In Progress";
-    }
+
     const task = await Task.create({
       project: project._id,
       title: title.trim(),
@@ -47,19 +49,24 @@ router.post('/project/:projectId', authenticate, async (req, res) => {
   }
 });
 
+// Update a task
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id).populate('project');
     if (!task || !task.project.members.includes(req.user._id)) {
       return res.status(403).json({ error: 'Access denied' });
     }
+
+    // If the task is being moved out of Done, prevent it
     if (task.status === 'Done' && req.body.status && req.body.status !== 'Done') {
       return res.status(400).json({ error: 'Cannot move a task out of Done.' });
     }
+
     const prevStatus = task.status;
     const wasUnassigned = !task.assignee;
-    Object.assign(task, req.body);
 
+    // If the task was unassigned and is now assigned, set status to In Progress
+    // unless the task is being moved out of Done
     if (
       wasUnassigned &&
       req.body.assignee &&
@@ -69,6 +76,7 @@ router.put('/:id', authenticate, async (req, res) => {
       task.status = 'In Progress';
     }
 
+    // If the task is being moved to Done, award a badge to the assignee
     if (
       prevStatus !== 'Done' &&
       task.status === 'Done' &&
@@ -82,6 +90,7 @@ router.put('/:id', authenticate, async (req, res) => {
       task.updatedAt = new Date();
     }
 
+    Object.assign(task, req.body);
     await task.save();
     res.json(task);
   } catch (err) {
@@ -89,12 +98,14 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Delete a task
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id).populate('project');
     if (!task || !task.project.members.includes(req.user._id)) {
       return res.status(403).json({ error: 'Access denied' });
     }
+    // If the task is Done, prevent it from being deleted
     if (task.status === 'Done') {
       return res.status(400).json({ error: 'Cannot delete a task that is Done.' });
     }
@@ -105,6 +116,7 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Create a new project
 router.post('/', authenticate, async (req, res) => {
   try {
     const { title, description } = req.body;

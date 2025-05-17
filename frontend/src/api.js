@@ -1,5 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+// Function to login using Google OAuth
 export async function loginWithGoogle(idToken) {
   const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
     method: 'POST',
@@ -9,6 +10,7 @@ export async function loginWithGoogle(idToken) {
   return res.json();
 }
 
+// Function to sign up with email, password, and name
 export async function signupWithEmail(email, password, name) {
   const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
     method: 'POST',
@@ -18,6 +20,7 @@ export async function signupWithEmail(email, password, name) {
   return res.json();
 }
 
+// Function to sign in with email and password
 export async function signinWithEmail(email, password) {
   const res = await fetch(`${API_BASE_URL}/api/auth/signin`, {
     method: 'POST',
@@ -27,6 +30,7 @@ export async function signinWithEmail(email, password) {
   return res.json();
 }
 
+// Function to fetch data with JWT token for authentication
 export async function fetchWithAuth(url, jwtToken, options = {}) {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   const res = await fetch(fullUrl, {
@@ -38,7 +42,3 @@ export async function fetchWithAuth(url, jwtToken, options = {}) {
   });
   return res.json();
 }
-
-// Usage example:
-// const { token, user } = await loginWithGoogle(idToken);
-// const projects = await fetchWithAuth('/api/projects', token);
