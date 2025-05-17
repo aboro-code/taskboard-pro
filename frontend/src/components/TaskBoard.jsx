@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function TaskBoard({
   tasks,
@@ -202,7 +202,8 @@ function TaskCommentsModal({ taskId, onClose }) {
       if (data.error) setError(data.error);
       else {
         setText("");
-        fetchComments();
+        // Add the new comment to the list without refetching all
+        setComments((prev) => [...prev, data]);
       }
     } catch {
       setError("Failed to add comment");

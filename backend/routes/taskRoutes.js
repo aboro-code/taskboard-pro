@@ -63,14 +63,16 @@ router.put('/:id', authenticate, async (req, res) => {
     }
 
     const prevStatus = task.status;
-    const wasUnassigned = !task.assignee;
+    const prevAssignee = task.assignee;
 
-    // If the task was unassigned and is now assigned, set status to In Progress
-    // unless the task is being moved out of Done
+    // Apply updates
+    Object.assign(task, req.body);
+
+    // If the task was unassigned and is now assigned, set status to In Progress (unless Done)
     if (
-      wasUnassigned &&
+      !prevAssignee &&
       req.body.assignee &&
-      (!req.body.status || req.body.status === task.status) &&
+      (!req.body.status || req.body.status === prevStatus) &&
       task.status !== 'Done'
     ) {
       task.status = 'In Progress';
@@ -90,8 +92,8 @@ router.put('/:id', authenticate, async (req, res) => {
       task.updatedAt = new Date();
     }
 
-    Object.assign(task, req.body);
     await task.save();
+    await task.populate('assignee', 'email name');
     res.json(task);
   } catch (err) {
     res.status(400).json({ error: 'Failed to update task' });

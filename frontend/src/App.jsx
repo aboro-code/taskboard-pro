@@ -73,7 +73,7 @@ export default function App() {
     localStorage.removeItem("user");
     localStorage.removeItem("jwt");
     localStorage.removeItem("selectedProject");
-    window.location.href = "/";
+    navigate("/"); // Use navigate instead of window.location.href
   }
 
   function handleSetSelectedProject(project) {

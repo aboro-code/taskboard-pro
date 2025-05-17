@@ -133,13 +133,16 @@ router.post('/task/:taskId/comment', authenticate, async (req, res) => {
   const task = await Task.findById(req.params.taskId);
   if (!task) return res.status(404).json({ error: 'Task not found' });
   if (!task.comments) task.comments = [];
-  task.comments.push({
+  const comment = {
     user: req.user._id,
     text,
     createdAt: new Date(),
-  });
+  };
+  task.comments.push(comment);
   await task.save();
-  res.json({ message: 'Comment added' });
+  // Populate the user for the last comment
+  await task.populate('comments.user', 'name email');
+  res.json(task.comments[task.comments.length - 1]);
 });
 
 router.get('/task/:taskId/comments', authenticate, async (req, res) => {

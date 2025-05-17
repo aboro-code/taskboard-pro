@@ -15,6 +15,7 @@ const taskSchema = new mongoose.Schema({
   assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   comments: [commentSchema],
+  updatedAt: { type: Date },
 });
 
 module.exports = mongoose.model('Task', taskSchema);
